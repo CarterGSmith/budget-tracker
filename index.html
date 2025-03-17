@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-md bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-bold text-center mb-4">Budget Tracker</h2>
+        
+        <form id="expenseForm">
+            <!-- Date Field -->
+            <label class="block text-sm font-medium">Date:</label>
+            <input type="date" id="date" class="w-full border rounded p-2 mb-3" required>
+            
+            <!-- Expense Type -->
+            <label class="block text-sm font-medium">Type:</label>
+            <select id="type" class="w-full border rounded p-2 mb-3">
+                <option value="Expense" selected>Expense</option>
+                <option value="Income">Income</option>
+            </select>
+            
+            <!-- Amount -->
+            <label class="block text-sm font-medium">Amount:</label>
+            <input type="number" id="amount" class="w-full border rounded p-2 mb-3" required>
+            
+            <!-- Category -->
+            <label class="block text-sm font-medium">Category:</label>
+            <select id="category" class="w-full border rounded p-2 mb-3">
+                <option value="General" selected>General</option>
+                <option value="Groceries">Groceries</option>
+                <option value="Bills">Bills</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="House">House</option>
+                <option value="Other">Other</option>
+            </select>
+            <input type="text" id="otherCategory" class="w-full border rounded p-2 mb-3 hidden" placeholder="Enter category" />
+            
+            <!-- Sub-Category (Hidden Initially) -->
+            <label id="subCategoryLabel" class="block text-sm font-medium hidden">Sub-Category:</label>
+            <select id="subCategory" class="w-full border rounded p-2 mb-3 hidden"></select>
+            
+            <!-- Necessity Scale -->
+            <label class="block text-sm font-medium">Necessity (1-10):</label>
+            <input type="range" id="necessity" min="1" max="10" value="5" class="w-full mb-3">
+            
+            <!-- Split Cost -->
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="split"> Split cost with roommate
+            </label>
+            
+            <!-- Submit Button -->
+            <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded mt-4">Submit</button>
+        </form>
+    </div>
+    
+    <script>
+        // Set default date to today
+        document.getElementById("date").valueAsDate = new Date();
+
+        const categorySelect = document.getElementById("category");
+        const subCategorySelect = document.getElementById("subCategory");
+        const subCategoryLabel = document.getElementById("subCategoryLabel");
+        const otherCategoryInput = document.getElementById("otherCategory");
+        const splitCheckbox = document.getElementById("split");
+        const amountInput = document.getElementById("amount");
+
+        let subCategories = {
+            "Groceries": ["Personal", "Hosting"],
+            "Bills": ["Internet", "Hydro", "Insurance", "Rent"],
+        };
+
+        categorySelect.addEventListener("change", function () {
+            const selectedCategory = categorySelect.value;
+            
+            if (selectedCategory === "Other") {
+                otherCategoryInput.classList.remove("hidden");
+                subCategoryLabel.classList.add("hidden");
+                subCategorySelect.classList.add("hidden");
+            } else {
+                otherCategoryInput.classList.add("hidden");
+                
+                if (subCategories[selectedCategory]) {
+                    subCategorySelect.innerHTML = "";
+                    subCategories[selectedCategory].forEach(sub => {
+                        let option = document.createElement("option");
+                        option.value = sub;
+                        option.textContent = sub;
+                        subCategorySelect.appendChild(option);
+                    });
+                    subCategoryLabel.classList.remove("hidden");
+                    subCategorySelect.classList.remove("hidden");
+                } else {
+                    subCategoryLabel.classList.add("hidden");
+                    subCategorySelect.classList.add("hidden");
+                }
+            }
+        });
+
+        document.getElementById("expenseForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const date = document.getElementById("date").value;
+            const type = document.getElementById("type").value;
+            let amount = parseFloat(amountInput.value);
+            const category = categorySelect.value === "Other" ? otherCategoryInput.value : categorySelect.value;
+            const subCategory = subCategorySelect.value || "";
+            const necessity = document.getElementById("necessity").value;
+            const split = splitCheckbox.checked ? "Yes" : "No";
+
+            if (splitCheckbox.checked) {
+                amount = (amount / 2).toFixed(2); // Ensure a decimal format
+            }
+
+            const expenseData = { date, type, amount, category, subCategory, necessity, split };
+
+            console.log("Sending data:", expenseData);
+
+            const GOOGLE_SHEETS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxczTMweHj4DJPwOamAHYeo8ztE8Uy5zjBlf1iPraYcBiBXPxf0afPq8ALCSBMM61Ee0w/exec";
+            
+            fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(expenseData),
+            })
+            .then(() => {
+                alert("Expense logged successfully!");
+                document.getElementById("expenseForm").reset();
+                document.getElementById("date").valueAsDate = new Date();
+            })
+            .catch(error => console.error("Error:", error));
+        });
+    </script>
+</body>
+</html>
